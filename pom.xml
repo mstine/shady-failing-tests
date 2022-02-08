@@ -14,9 +14,11 @@
 	<name>graal-test</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
+		<exec.mainClass>com.mattstine.graaltest.GraalTestApplication</exec.mainClass>
 		<java.version>17</java.version>
 		<repackage.classifier/>
 		<spring-native.version>0.11.2</spring-native.version>
+		<junit.platform.native.version>0.9.9</junit.platform.native.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -105,9 +107,36 @@
 					<artifactId>junit-platform-launcher</artifactId>
 					<scope>test</scope>
 				</dependency>
+				<dependency>
+					<groupId>org.graalvm.buildtools</groupId>
+					<artifactId>junit-platform-native</artifactId>
+					<version>${junit.platform.native.version}</version>
+					<scope>test</scope>
+				</dependency>
 			</dependencies>
 			<build>
 				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-shade-plugin</artifactId>
+						<version>3.2.4</version>
+						<executions>
+							<execution>
+								<phase>package</phase>
+								<goals>
+									<goal>shade</goal>
+								</goals>
+								<configuration>
+									<shadedArtifactAttached>true</shadedArtifactAttached>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<version>3.0.0-M5</version>
+					</plugin>
 					<plugin>
 						<groupId>org.graalvm.buildtools</groupId>
 						<artifactId>native-maven-plugin</artifactId>
@@ -116,16 +145,56 @@
 						<executions>
 							<execution>
 								<id>test-native</id>
-								<phase>test</phase>
+								<phase>integration-test</phase>
 								<goals>
 									<goal>test</goal>
 								</goals>
+								<configuration>
+									<classpath>
+										<param>${project.build.directory}/${project.artifactId}-${project.version}-tests.jar</param>
+									</classpath>
+								</configuration>
 							</execution>
 							<execution>
 								<id>build-native</id>
 								<phase>package</phase>
 								<goals>
 									<goal>build</goal>
+								</goals>
+								<configuration>
+									<classpath>
+										<param>${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar</param>
+									</classpath>
+								</configuration>
+							</execution>
+						</executions>
+						<configuration>
+							<skip>false</skip>
+							<imageName>${project.artifactId}</imageName>
+							<mainClass>${exec.mainClass}</mainClass>
+							<buildArgs>
+								<buildArg>--no-fallback</buildArg>
+							</buildArgs>
+							<classpath>
+								<param>${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar</param>
+							</classpath>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-assembly-plugin</artifactId>
+						<version>2.4.1</version>
+						<configuration>
+							<descriptors>
+								<descriptor>src/assembly/test-jar-with-dependencies.xml</descriptor>
+							</descriptors>
+						</configuration>
+						<executions>
+							<execution>
+								<id>make-test-jar</id>
+								<phase>package</phase>
+								<goals>
+									<goal>single</goal>
 								</goals>
 							</execution>
 						</executions>
